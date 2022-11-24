@@ -1,6 +1,14 @@
 from functools import partial, update_wrapper
 import datetime
 
+class ScheduleError(Exception):
+	pass
+
+class ScheduleValueError(ScheduleError):
+	pass
+
+class IntervalError(ScheduleValueError):
+	pass
 
 class Scheduler:
 	def __init__(self):
@@ -12,7 +20,7 @@ class Scheduler:
 		return job
 
 	def run_pending(self):
-		all_jobs = (job for job in self.jobs )
+		all_jobs = (job for job in self.jobs if Job.should_run)
 		for job in sorted(all_jobs):
 			job.run()
 
@@ -31,7 +39,8 @@ class Job:
 
 	@property
 	def second(self):
-		assert self.interval == 1
+		if self.second != 1:
+			raise IntervalError("you use the second instead of seconds")
 		return self.seconds
 
 	@property
@@ -40,7 +49,8 @@ class Job:
 		return self
 	@property
 	def minute(self):
-		assert self.interval == 1
+		if self.second != 1:
+			raise IntervalError("you use the minute instead of minuts")
 		return self.minutes
 
 	@property
@@ -50,7 +60,8 @@ class Job:
 
 	@property
 	def hour(self):
-		assert self.interval == 1
+		if self.second != 1:
+			raise IntervalError("you use the hour instead of houre")
 		return self.minutes
 
 	@property
@@ -60,7 +71,7 @@ class Job:
 
 	@property
 	def day(self):
-		assert self.interval == 1
+		raise IntervalError("you use the day instead of dayes")
 		return self.day
 
 	@property
@@ -70,22 +81,12 @@ class Job:
 
 	@property
 	def week(self):
-		self.unit = 'weeks'
+		raise IntervalError("you use the week instead of weeks")
 		return self
 
 	@property
 	def weeks(self):
 		self.unit = 'weeks'
-		return self
-
-	@property
-	def month(self):
-		raise self.interval == 1
-		return self.month
-
-	@property
-	def months(self):
-		self.unit = "months"
 		return self   
 
 	def do(self, job_func, *args, **kwargs):
@@ -95,7 +96,8 @@ class Job:
 		return self
     
 	def _schedule_next_run (self):
-		assert self.unit in ('seconds','minutes','hours','days','weeks','month')
+		if self.unit in ('seconds','minutes','hours','days','weeks'):
+			raise ScheduleValueError("invalid unit")
 		self.period = datetime.timedelta(**{self.unit:self.interval})
 		self.next_run = datetime.datetime.now() + self.period
 
@@ -104,7 +106,8 @@ class Job:
 		self.last_run = datetime.datetime.now()
 		self._schedule_next_run()
 		return ret
-
+	def should_run(self):
+		return datetime.datetime.now() >= self.next_run
 
 default_scheduler = Scheduler()
 
